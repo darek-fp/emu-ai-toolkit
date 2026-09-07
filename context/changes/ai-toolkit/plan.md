@@ -431,11 +431,11 @@ installed state to migrate.
 
 #### Automated
 
-- [x] 3.1 Workflow YAML parses successfully
-- [x] 3.2 `validate` job steps run successfully in sequence
-- [x] 3.3 Smoke-test before/after directory diff is empty after uninstall
+- [x] 3.1 Workflow YAML parses successfully — b6d2467
+- [x] 3.2 `validate` job steps run successfully in sequence — b6d2467
+- [x] 3.3 Smoke-test before/after directory diff is empty after uninstall — b6d2467
 
 #### Manual
 
-- [ ] 3.4 Throwaway branch push runs `validate` job green in Actions UI
-- [ ] 3.5 `publish` job confirmed skipped on `pull_request`, runs on `push`
+- [x] 3.4 Throwaway branch push runs `validate` job green in Actions UI
+- [x] 3.5 `publish` job confirmed skipped on `pull_request`, runs on `push`
