@@ -405,23 +405,23 @@ installed state to migrate.
 
 #### Automated
 
-- [x] 1.1 `node -e "JSON.parse(...)"` on package.json succeeds
-- [x] 1.2 `npm pack --dry-run` lists declared files
-- [x] 1.3 `skills/code-review/SKILL.md` frontmatter `name` equals `code-review`
+- [x] 1.1 `node -e "JSON.parse(...)"` on package.json succeeds — 8f0c98c
+- [x] 1.2 `npm pack --dry-run` lists declared files — 8f0c98c
+- [x] 1.3 `skills/code-review/SKILL.md` frontmatter `name` equals `code-review` — 8f0c98c
 
 #### Manual
 
-- [ ] 1.4 README `.npmrc` and auth-helper snippets render correctly
+- [x] 1.4 README `.npmrc` and auth-helper snippets render correctly — 8f0c98c
 
 ### Phase 2: Installer & Uninstaller Logic
 
 #### Automated
 
-- [ ] 2.1 Neither-present scratch install creates both targets + single manifest
-- [ ] 2.2 Claude-only scratch install creates only the Claude target
-- [ ] 2.3 Re-running install does not duplicate sentinel blocks or manifest entries
-- [ ] 2.4 Uninstall removes all manifest-listed files, sentinel blocks, and the manifest
-- [ ] 2.5 `bin/cli.js uninstall` matches direct `node uninstall.js`
+- [x] 2.1 Neither-present scratch install creates both targets + single manifest
+- [x] 2.2 Claude-only scratch install creates only the Claude target
+- [x] 2.3 Re-running install does not duplicate sentinel blocks or manifest entries
+- [x] 2.4 Uninstall removes all manifest-listed files, sentinel blocks, and the manifest
+- [x] 2.5 `bin/cli.js uninstall` matches direct `node uninstall.js`
 
 #### Manual
 
