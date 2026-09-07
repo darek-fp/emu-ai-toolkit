@@ -13,8 +13,8 @@ const PREINSTALL_HELPER =
 
 // Target-specific install locations, keyed by the value returned from detectTargets().
 const TARGETS = {
-  claude: { skillsDir: ".claude/skills", rulesFile: "CLAUDE.md" },
-  copilot: { skillsDir: ".github/skills", rulesFile: "AGENTS.md" },
+  claude: { markerDir: ".claude", skillsDir: ".claude/skills", rulesFile: "CLAUDE.md" },
+  copilot: { markerDir: ".github", skillsDir: ".github/skills", rulesFile: "AGENTS.md" },
 };
 
 function findProjectRoot() {
@@ -79,16 +79,18 @@ function applyRulesBlock(existing, teamRules) {
   return existing.trimEnd() + "\n\n" + block + "\n";
 }
 
-function installRules(projectRoot, target, installedFiles) {
+function installRules(projectRoot, target, installedFiles, createdRuleFiles) {
   const rulesSource = path.join(__dirname, "rules", "AGENTS.md");
   if (!fs.existsSync(rulesSource)) return;
 
   const targetFile = TARGETS[target].rulesFile;
   const targetPath = path.join(projectRoot, targetFile);
-  const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, "utf8") : "";
+  const fileExisted = fs.existsSync(targetPath);
+  const existing = fileExisted ? fs.readFileSync(targetPath, "utf8") : "";
   const teamRules = fs.readFileSync(rulesSource, "utf8");
   fs.writeFileSync(targetPath, applyRulesBlock(existing, teamRules));
   if (!installedFiles.includes(targetFile)) installedFiles.push(targetFile);
+  if (!fileExisted && !createdRuleFiles.includes(targetFile)) createdRuleFiles.push(targetFile);
 }
 
 // Only inject the CI-only preinstall auth helper into the *consumer's* own
@@ -115,7 +117,7 @@ function maybeInjectPreinstallHelper(projectRoot, manifest) {
   manifest.preinstallHelperLine = PREINSTALL_HELPER;
 }
 
-function writeManifest(projectRoot, targets, installedFiles, extra) {
+function writeManifest(projectRoot, targets, installedFiles, createdDirs, createdRuleFiles, extra) {
   fs.writeFileSync(
     path.join(projectRoot, MANIFEST),
     JSON.stringify(
@@ -125,6 +127,8 @@ function writeManifest(projectRoot, targets, installedFiles, extra) {
         installedAt: new Date().toISOString(),
         targets,
         files: installedFiles,
+        createdDirs,
+        createdRuleFiles,
         preinstallInjected: false,
         ...extra,
       },
@@ -139,15 +143,23 @@ function run() {
     const projectRoot = findProjectRoot();
     const targets = detectTargets(projectRoot);
     const installedFiles = [];
+    const createdRuleFiles = [];
+
+    // Capture, before anything is written, which target marker directories
+    // (.claude/.github) did not already exist — so uninstall can remove
+    // them again if it created them and they end up empty.
+    const createdDirs = targets
+      .map((target) => TARGETS[target].markerDir)
+      .filter((markerDir) => !fs.existsSync(path.join(projectRoot, markerDir)));
 
     for (const target of targets) {
       installSkills(projectRoot, target, installedFiles);
-      installRules(projectRoot, target, installedFiles);
+      installRules(projectRoot, target, installedFiles, createdRuleFiles);
     }
 
     const manifest = {};
     maybeInjectPreinstallHelper(projectRoot, manifest);
-    writeManifest(projectRoot, targets, installedFiles, manifest);
+    writeManifest(projectRoot, targets, installedFiles, createdDirs, createdRuleFiles, manifest);
 
     console.log(
       `${PACKAGE_NAME}: installed ${installedFiles.length} file(s) for target(s) ${targets.join(", ")}`,

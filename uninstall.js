@@ -20,14 +20,34 @@ function removeRulesBlock(content) {
   return (content.slice(0, start) + content.slice(end + END.length)).replace(/\n{3,}/g, "\n\n");
 }
 
-function removeRulesBlockFromTargets(projectRoot, targets) {
+function removeRulesBlockFromTargets(projectRoot, targets, createdRuleFiles) {
   const ruleFiles = new Set(targets.map((target) => TARGETS[target].rulesFile));
+  const createdSet = new Set(createdRuleFiles || []);
   for (const ruleFile of ruleFiles) {
     const rulesPath = path.join(projectRoot, ruleFile);
     if (!fs.existsSync(rulesPath)) continue;
-    fs.writeFileSync(rulesPath, removeRulesBlock(fs.readFileSync(rulesPath, "utf8")));
+    const stripped = removeRulesBlock(fs.readFileSync(rulesPath, "utf8"));
+    // If install.js created this rule file from nothing, delete it entirely
+    // once its content is stripped down to whitespace, instead of leaving
+    // an empty file behind.
+    if (createdSet.has(ruleFile) && stripped.trim() === "") {
+      fs.rmSync(rulesPath, { force: true });
+    } else {
+      fs.writeFileSync(rulesPath, stripped);
+    }
   }
   return ruleFiles;
+}
+
+// Remove target marker directories (.claude/.github) that install.js created
+// from nothing, but only once they're left empty — never touch a directory
+// that pre-existed before install ran.
+function removeCreatedDirs(projectRoot, createdDirs) {
+  for (const dir of createdDirs || []) {
+    const dirPath = path.join(projectRoot, dir);
+    if (!fs.existsSync(dirPath)) continue;
+    if (fs.readdirSync(dirPath).length === 0) fs.rmSync(dirPath, { recursive: true, force: true });
+  }
 }
 
 function removeInstalledFiles(projectRoot, files, ruleFiles) {
@@ -86,8 +106,9 @@ function run() {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
     const targets = manifest.targets || [];
 
-    const ruleFiles = removeRulesBlockFromTargets(projectRoot, targets);
+    const ruleFiles = removeRulesBlockFromTargets(projectRoot, targets, manifest.createdRuleFiles);
     removeInstalledFiles(projectRoot, manifest.files || [], ruleFiles);
+    removeCreatedDirs(projectRoot, manifest.createdDirs);
     maybeRemovePreinstallHelper(projectRoot, manifest);
 
     fs.rmSync(manifestPath, { force: true });

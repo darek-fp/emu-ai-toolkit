@@ -1,0 +1,121 @@
+name: Publish AI Toolkit
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@darek-fp"
+
+      - run: npm ci
+
+      - name: Validate package.json fields
+        run: |
+          node -e "
+            const pkg = JSON.parse(require('fs').readFileSync('package.json', 'utf8'));
+            if (!pkg.name) throw new Error('package.json is missing \"name\"');
+            if (!pkg.version) throw new Error('package.json is missing \"version\"');
+            if (!pkg.publishConfig || !pkg.publishConfig.registry) throw new Error('package.json is missing \"publishConfig.registry\"');
+          "
+
+      - name: Placeholder skill exists
+        run: test -f skills/code-review/SKILL.md
+
+      - name: SKILL.md frontmatter matches directory name
+        run: |
+          node -e "
+            const fs = require('fs');
+            const content = fs.readFileSync('skills/code-review/SKILL.md', 'utf8');
+            const match = content.match(/^---\n([\s\S]*?)\n---/);
+            if (!match) throw new Error('skills/code-review/SKILL.md has no YAML frontmatter');
+            const frontmatter = match[1];
+            const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+            const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+            if (!nameMatch) throw new Error('SKILL.md frontmatter is missing \"name\"');
+            if (!descMatch) throw new Error('SKILL.md frontmatter is missing \"description\"');
+            if (nameMatch[1].trim() !== 'code-review') throw new Error('SKILL.md frontmatter \"name\" must equal directory name \"code-review\"');
+          "
+
+      - run: npm pack --dry-run
+
+      - name: Installer smoke test — dual-target round-trip
+        run: |
+          set -euo pipefail
+
+          # Scenario 1: neither .claude/ nor .github/ present -> both targets installed.
+          SCRATCH_A=$(mktemp -d)
+          BEFORE_A=$(cd "$SCRATCH_A" && find . | sort)
+          PROJECT_ROOT="$SCRATCH_A" node install.js
+
+          test -d "$SCRATCH_A/.claude/skills/code-review"
+          test -d "$SCRATCH_A/.github/skills/code-review"
+          test -f "$SCRATCH_A/CLAUDE.md"
+          test -f "$SCRATCH_A/AGENTS.md"
+          test -f "$SCRATCH_A/.ai-toolkit-manifest.json"
+          node -e "
+            const m = JSON.parse(require('fs').readFileSync('$SCRATCH_A/.ai-toolkit-manifest.json', 'utf8'));
+            const targets = [...m.targets].sort().join(',');
+            if (targets !== 'claude,copilot') throw new Error('expected both targets, got: ' + targets);
+          "
+
+          PROJECT_ROOT="$SCRATCH_A" node uninstall.js
+          AFTER_A=$(cd "$SCRATCH_A" && find . | sort)
+          diff <(echo "$BEFORE_A") <(echo "$AFTER_A")
+
+          # Scenario 2: only .github/ present -> only the copilot target installed.
+          SCRATCH_B=$(mktemp -d)
+          mkdir -p "$SCRATCH_B/.github"
+          BEFORE_B=$(cd "$SCRATCH_B" && find . | sort)
+          PROJECT_ROOT="$SCRATCH_B" node install.js
+
+          test -d "$SCRATCH_B/.github/skills/code-review"
+          test -f "$SCRATCH_B/AGENTS.md"
+          if [ -d "$SCRATCH_B/.claude" ]; then
+            echo "unexpected .claude/ target installed when only .github/ was present" >&2
+            exit 1
+          fi
+          node -e "
+            const m = JSON.parse(require('fs').readFileSync('$SCRATCH_B/.ai-toolkit-manifest.json', 'utf8'));
+            const targets = [...m.targets].sort().join(',');
+            if (targets !== 'copilot') throw new Error('expected only copilot target, got: ' + targets);
+          "
+
+          PROJECT_ROOT="$SCRATCH_B" node uninstall.js
+          AFTER_B=$(cd "$SCRATCH_B" && find . | sort)
+          diff <(echo "$BEFORE_B") <(echo "$AFTER_B")
+
+          rm -rf "$SCRATCH_A" "$SCRATCH_B"
+
+  publish:
+    needs: validate
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@darek-fp"
+
+      - run: npm ci
+
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

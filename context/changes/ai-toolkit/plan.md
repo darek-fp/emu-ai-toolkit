@@ -417,23 +417,23 @@ installed state to migrate.
 
 #### Automated
 
-- [x] 2.1 Neither-present scratch install creates both targets + single manifest
-- [x] 2.2 Claude-only scratch install creates only the Claude target
-- [x] 2.3 Re-running install does not duplicate sentinel blocks or manifest entries
-- [x] 2.4 Uninstall removes all manifest-listed files, sentinel blocks, and the manifest
-- [x] 2.5 `bin/cli.js uninstall` matches direct `node uninstall.js`
+- [x] 2.1 Neither-present scratch install creates both targets + single manifest — 87965fb
+- [x] 2.2 Claude-only scratch install creates only the Claude target — 87965fb
+- [x] 2.3 Re-running install does not duplicate sentinel blocks or manifest entries — 87965fb
+- [x] 2.4 Uninstall removes all manifest-listed files, sentinel blocks, and the manifest — 87965fb
+- [x] 2.5 `bin/cli.js uninstall` matches direct `node uninstall.js` — 87965fb
 
 #### Manual
 
-- [ ] 2.6 `npm link` into a `.github/`-only throwaway repo installs Copilot target correctly
+- [x] 2.6 `npm link` into a `.github/`-only throwaway repo installs Copilot target correctly — 87965fb
 
 ### Phase 3: CI Workflow & Validation
 
 #### Automated
 
-- [ ] 3.1 Workflow YAML parses successfully
-- [ ] 3.2 `validate` job steps run successfully in sequence
-- [ ] 3.3 Smoke-test before/after directory diff is empty after uninstall
+- [x] 3.1 Workflow YAML parses successfully
+- [x] 3.2 `validate` job steps run successfully in sequence
+- [x] 3.3 Smoke-test before/after directory diff is empty after uninstall
 
 #### Manual
 
