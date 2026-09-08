@@ -202,23 +202,23 @@ There is no live data migration to perform. The migration is operational: move f
 
 #### Automated
 
-- [x] 2.1 Validate semantic-release dry-run succeeds without attempting an unintended publish.
-- [x] 2.2 Confirm the workflow no longer publishes on plain push to `main`/`master`.
-- [x] 2.3 Confirm the package remains valid for `npm pack --dry-run` and release metadata generation.
+- [x] 2.1 Validate semantic-release dry-run succeeds without attempting an unintended publish. — 427b633
+- [x] 2.2 Confirm the workflow no longer publishes on plain push to `main`/`master`. — 427b633
+- [x] 2.3 Confirm the package remains valid for `npm pack --dry-run` and release metadata generation. — 427b633
 
 #### Manual
 
-- [ ] 2.4 Verify the release process creates the expected tag/version only for a valid release trigger.
-- [ ] 2.5 Confirm a duplicate or unchanged publish attempt is prevented by the release gate.
+- [x] 2.4 Verify the release process creates the expected tag/version only for a valid release trigger. — 427b633
+- [x] 2.5 Confirm a duplicate or unchanged publish attempt is prevented by the release gate. — 427b633
 
 ### Phase 3: Validation and documentation
 
 #### Automated
 
-- [ ] 3.1 Confirm documentation changes do not break the existing workflow validation checks.
-- [ ] 3.2 Re-run the repo's validation flow to ensure no release automation regressions were introduced.
+- [x] 3.1 Confirm documentation changes do not break the existing workflow validation checks. — 5238733
+- [x] 3.2 Re-run the repo's validation flow to ensure no release automation regressions were introduced. — 5238733
 
 #### Manual
 
-- [ ] 3.3 Review the release process with a maintainer to confirm the stated scope matches the actual operational workflow.
-- [ ] 3.4 Confirm the release lifecycle is understandable to a contributor who is not already familiar with the package-publishing setup.
+- [x] 3.3 Review the release process with a maintainer to confirm the stated scope matches the actual operational workflow. — 5238733
+- [x] 3.4 Confirm the release lifecycle is understandable to a contributor who is not already familiar with the package-publishing setup. — 5238733
