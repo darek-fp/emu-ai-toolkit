@@ -189,22 +189,22 @@ There is no live data migration to perform. The migration is operational: move f
 
 #### Automated
 
-- [x] 1.1 Validate package metadata is present and version-bearing fields are consistent.
-- [x] 1.2 Run the installation smoke test to confirm manifest version matches the package version without drift.
-- [x] 1.3 Confirm `npm pack --dry-run` still succeeds with the adjusted version-source logic.
+- [x] 1.1 Validate package metadata is present and version-bearing fields are consistent. — 9d17bb3
+- [x] 1.2 Run the installation smoke test to confirm manifest version matches the package version without drift. — 9d17bb3
+- [x] 1.3 Confirm `npm pack --dry-run` still succeeds with the adjusted version-source logic. — 9d17bb3
 
 #### Manual
 
-- [x] 1.4 Verify a fresh consumer install produces a manifest whose version matches the package version.
-- [x] 1.5 Confirm uninstall/install behavior is unchanged aside from version consistency.
+- [x] 1.4 Verify a fresh consumer install produces a manifest whose version matches the package version. — 9d17bb3
+- [x] 1.5 Confirm uninstall/install behavior is unchanged aside from version consistency. — 9d17bb3
 
 ### Phase 2: Introduce semantic-release orchestration
 
 #### Automated
 
-- [ ] 2.1 Validate semantic-release dry-run succeeds without attempting an unintended publish.
-- [ ] 2.2 Confirm the workflow no longer publishes on plain push to `main`/`master`.
-- [ ] 2.3 Confirm the package remains valid for `npm pack --dry-run` and release metadata generation.
+- [x] 2.1 Validate semantic-release dry-run succeeds without attempting an unintended publish.
+- [x] 2.2 Confirm the workflow no longer publishes on plain push to `main`/`master`.
+- [x] 2.3 Confirm the package remains valid for `npm pack --dry-run` and release metadata generation.
 
 #### Manual
 

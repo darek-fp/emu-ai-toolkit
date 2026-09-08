@@ -16,7 +16,17 @@
     "README.md"
   ],
   "scripts": {
-    "postinstall": "node install.js"
+    "postinstall": "node install.js",
+    "release": "semantic-release"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.1",
+    "@semantic-release/commit-analyzer": "^13.0.0",
+    "@semantic-release/git": "^10.0.0",
+    "@semantic-release/npm": "^12.0.0",
+    "@semantic-release/release-notes-generator": "^14.0.0",
+    "conventional-changelog-conventionalcommits": "^9.0.0",
+    "semantic-release": "^24.2.0"
   },
   "bin": {
     "ai-toolkit": "./bin/cli.js"
