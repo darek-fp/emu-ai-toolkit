@@ -1,28 +1,48 @@
 # @darek-fp/ai-toolkit
 
 Team AI artifacts (skills and rules) distributed as a private npm package
-through GitHub Packages, installable into consumer repositories that use
-Claude Code, GitHub Copilot, or both.
+through GitHub Packages, installable into repositories that use supported AI
+coding-tool conventions. This package integrates local repository conventions;
+it does not provide model/API clients or credentials.
 
 ## What gets installed
 
-On `npm install`, this package's `postinstall` hook runs `install.js`, which
-detects which AI tool convention(s) exist in your repository:
+On `npm install`, this package's `postinstall` hook runs `install.js`. It
+detects the following repository markers and installs the corresponding
+convention:
 
-- If `.claude/` exists, the Claude target is installed: the placeholder skill
-  goes to `.claude/skills/code-review/`, and the placeholder rule block is
-  appended to `CLAUDE.md` between sentinel markers.
-- If `.github/` exists, the Copilot target is installed: the placeholder
-  skill goes to `.github/skills/code-review/`, and the placeholder rule block
-  is appended to `AGENTS.md` between sentinel markers.
-- If neither directory exists, **both** targets are installed.
+| Target | Marker | Skills | Rules |
+| --- | --- | --- | --- |
+| Claude Code | `.claude/` | `.claude/skills/` | `CLAUDE.md` |
+| GitHub Copilot | `.github/` | `.github/skills/` | `AGENTS.md` |
+| Cursor | `.cursor/` | `.cursor/skills/` | `.cursor/rules/ai-toolkit.mdc` |
+| Windsurf | `.windsurf/` | `.windsurf/skills/` | `.windsurf/rules/ai-toolkit.md` |
 
-All installed files are tracked in a single `.ai-toolkit-manifest.json` at
+Markdown rule files use sentinel markers. Cursor files also receive native
+frontmatter (`description` and `alwaysApply`) before the managed block.
+Existing rule text and unmanaged skill files are preserved. A conflicting
+unmanaged skill is reported in the manifest and is not overwritten.
+
+If neither a marker nor an explicit selection exists, the legacy **Claude and
+Copilot** pair is installed. To select targets explicitly:
+
+```bash
+npx ai-toolkit install --target cursor,windsurf
+AI_TOOLKIT_TARGETS=claude npx ai-toolkit install
+```
+
+The CLI option takes precedence over `AI_TOOLKIT_TARGETS`. Target IDs are
+`claude`, `copilot`, `cursor`, and `windsurf`; invalid IDs fail before any
+files are written. `uninstall` takes no target because the manifest is the
+authority.
+
+All installed files are tracked in a versioned `.ai-toolkit-manifest.json` at
 your project root, so `npx ai-toolkit uninstall` (or `node uninstall.js`) can
-cleanly remove everything it added — including the sentinel-wrapped rule
-blocks — without touching anything else in your files. Re-running install is
-idempotent: it updates the managed blocks/files in place instead of
-duplicating them.
+remove toolkit-owned files and sentinel-wrapped rule blocks without touching
+unmanaged content. Existing Claude/Copilot manifests remain uninstallable.
+Unknown or newer manifest versions fail closed and preserve consumer files.
+Re-running install is idempotent: it updates managed blocks/files in place
+instead of duplicating them.
 
 ## Consumer repository setup
 

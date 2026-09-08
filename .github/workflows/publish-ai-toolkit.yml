@@ -24,7 +24,7 @@ jobs:
           registry-url: "https://npm.pkg.github.com"
           scope: "@darek-fp"
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
 
       - name: Validate package.json fields
         run: |
@@ -54,6 +54,44 @@ jobs:
           "
 
       - run: npm pack --dry-run
+
+      - name: Verify package-root isolation
+        run: |
+          test ! -e .ai-toolkit-manifest.json
+          test ! -e CLAUDE.md
+          test ! -e AGENTS.md
+
+      - name: Installer provider matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          for entry in "claude:.claude" "copilot:.github" "cursor:.cursor" "windsurf:.windsurf"; do
+            target="${entry%%:*}"
+            marker="${entry##*:}"
+            scratch=$(mktemp -d)
+            mkdir -p "$scratch/$marker"
+            PROJECT_ROOT="$scratch" node install.js
+            node -e "const m=require('$scratch/.ai-toolkit-manifest.json'); if(m.targets.length!==1||m.targets[0]!=='$target') throw new Error('bad target')"
+            PROJECT_ROOT="$scratch" node install.js
+            node -e "const fs=require('fs'); const m=require('$scratch/.ai-toolkit-manifest.json'); const p=m.providers[0].rulesPath; const s=fs.readFileSync('$scratch/'+p,'utf8'); if((s.match(/BEGIN @darek-fp\\/ai-toolkit/g)||[]).length!==1) throw new Error('duplicate block')"
+            PROJECT_ROOT="$scratch" node uninstall.js
+            test ! -e "$scratch/.ai-toolkit-manifest.json"
+            rm -rf "$scratch"
+          done
+
+          scratch=$(mktemp -d)
+          PROJECT_ROOT="$scratch" node install.js
+          node -e "const m=require('$scratch/.ai-toolkit-manifest.json'); if(m.targets.join(',')!=='claude,copilot') throw new Error('legacy fallback changed')"
+          PROJECT_ROOT="$scratch" node uninstall.js
+
+          scratch=$(mktemp -d)
+          mkdir -p "$scratch/.github/skills/code-review"
+          printf 'consumer-owned\n' > "$scratch/.github/skills/code-review/SKILL.md"
+          PROJECT_ROOT="$scratch" node install.js
+          grep -qx 'consumer-owned' "$scratch/.github/skills/code-review/SKILL.md"
+          PROJECT_ROOT="$scratch" node uninstall.js
+          grep -qx 'consumer-owned' "$scratch/.github/skills/code-review/SKILL.md"
+          rm -rf "$scratch"
 
       - name: Installer smoke test — dual-target round-trip
         run: |
@@ -118,7 +156,14 @@ jobs:
           registry-url: "https://npm.pkg.github.com"
           scope: "@darek-fp"
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+
+      - name: Validate packed runtime
+        run: |
+          npm pack --dry-run
+          node --check providers.js
+          node --check install.js
+          node --check uninstall.js
 
       - name: Run semantic-release
         run: npx semantic-release

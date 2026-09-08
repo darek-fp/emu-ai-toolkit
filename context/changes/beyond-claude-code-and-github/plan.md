@@ -331,14 +331,14 @@ uninstall safely.
 
 #### Automated
 
-- [x] 1.1 `node --check` passes for the registry, installer, uninstaller, and CLI
-- [x] 1.2 Single-provider detection and explicit target selection pass for all four providers
-- [x] 1.3 Reinstall, conflict preservation, uninstall, and legacy manifest scenarios pass
+- [x] 1.1 `node --check` passes for the registry, installer, uninstaller, and CLI — 9e84cd1
+- [x] 1.2 Single-provider detection and explicit target selection pass for all four providers — 9e84cd1
+- [x] 1.3 Reinstall, conflict preservation, uninstall, and legacy manifest scenarios pass — 9e84cd1
 
 #### Manual
 
-- [x] 1.4 Cursor and Windsurf generated files use their documented native locations and formats
-- [x] 1.5 CLI validation errors are clear and do not partially install
+- [x] 1.4 Cursor and Windsurf generated files use their documented native locations and formats — 9e84cd1
+- [x] 1.5 CLI validation errors are clear and do not partially install — 9e84cd1
 
 ### Phase 2: Documentation and CI Provider Matrix
 
