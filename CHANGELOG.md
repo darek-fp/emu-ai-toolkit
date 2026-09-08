@@ -1,3 +1,15 @@
+## [1.1.0](https://github.com/darek-fp/emu-ai-toolkit/compare/v1.0.0...v1.1.0) (2026-09-08)
+
+### Features
+
+* add foundational and archival documentation; include .gitignore for node_modules ([7f87fd4](https://github.com/darek-fp/emu-ai-toolkit/commit/7f87fd48ff4773b1685234e8f3da4c7594076233))
+* **beyond-claude-code-and-github:** add plan brief for supporting additional AI provider conventions ([2491cf9](https://github.com/darek-fp/emu-ai-toolkit/commit/2491cf94766a4d018e25d5d8f77211241e46d0ab))
+* **beyond-claude-code-and-github:** add provider registry and safe installation (p1) ([9e84cd1](https://github.com/darek-fp/emu-ai-toolkit/commit/9e84cd17e2e795f339caa4287eb8b569bc4b0df7))
+
+### Bug Fixes
+
+* **beyond-claude-code-and-github:** remove created provider directories ([c0f0ce4](https://github.com/darek-fp/emu-ai-toolkit/commit/c0f0ce46c204faf29aecc512fc604326c70e6ebf))
+
 ## 1.0.0 (2026-09-08)
 
 ### Features
