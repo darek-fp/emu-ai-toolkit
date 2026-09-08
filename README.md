@@ -36,6 +36,20 @@ Add this to your repository's committed `.npmrc` so npm knows to resolve the
 This file must contain **only** the registry mapping — never commit an auth
 token to it.
 
+## Release lifecycle
+
+This package uses `semantic-release` as the only source of package versioning
+and publication control. `package.json` is the canonical version source, and the
+release job runs only on pushes to `main` or `master` after the repository's
+validation checks pass.
+
+The workflow is intentionally package-only:
+
+- version changes are driven by conventional commits and semantic-release
+- Git tags are the internal release signal for this package
+- GitHub Releases are not the primary publish contract for the package itself
+- `npm publish` is never triggered directly from a raw branch push
+
 ### Authenticating
 
 Local developers should authenticate with `npm login` against
