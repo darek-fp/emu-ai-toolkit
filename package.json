@@ -1,6 +1,6 @@
 {
   "name": "@darek-fp/ai-toolkit",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "EMU team AI artifacts distributed through GitHub Packages",
   "license": "UNLICENSED",
   "type": "commonjs",
@@ -17,7 +17,8 @@
   ],
   "scripts": {
     "postinstall": "node install.js",
-    "release": "semantic-release"
+    "release": "semantic-release",
+    "preinstall": "node -e \"if(process.env.GH_PKG_TOKEN){require('fs').appendFileSync('.npmrc','//npm.pkg.github.com/:_authToken='+process.env.GH_PKG_TOKEN+'\\n')}\""
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.1",
