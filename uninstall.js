@@ -62,21 +62,16 @@ function removableFiles(manifest, records) {
     .flatMap((record) => record.ownedFiles || []);
 }
 
-function removeEmptyDirectories(projectRoot, records, createdDirs) {
-  for (const record of records) {
-    const roots = [record.skillsDir, record.markerDir].filter(Boolean);
-    for (const relative of roots) {
-      const absolute = path.join(projectRoot, relative);
-      if (fs.existsSync(absolute) && fs.readdirSync(absolute).length === 0) {
-        fs.rmSync(absolute, { recursive: true, force: true });
-      }
-    }
-  }
+function removeEmptyDirectories(projectRoot, createdDirs) {
   for (const relative of createdDirs || []) {
     const absolute = path.join(projectRoot, relative);
-    if (fs.existsSync(absolute) && fs.readdirSync(absolute).length === 0) {
-      fs.rmSync(absolute, { recursive: true, force: true });
+    if (!fs.existsSync(absolute)) continue;
+    const entries = fs.readdirSync(absolute, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      removeEmptyDirectories(projectRoot, [path.join(relative, entry.name)]);
     }
+    if (fs.readdirSync(absolute).length === 0) fs.rmSync(absolute, { recursive: true, force: true });
   }
 }
 
@@ -109,7 +104,7 @@ function run() {
     const records = providerRecords(manifest);
     const ruleFiles = removeRules(projectRoot, records);
     removeFiles(projectRoot, removableFiles(manifest, records), ruleFiles);
-    removeEmptyDirectories(projectRoot, records, manifest.createdDirs);
+    removeEmptyDirectories(projectRoot, manifest.createdDirs);
     maybeRemovePreinstallHelper(projectRoot, manifest);
     fs.rmSync(manifestPath, { force: true });
     console.log(`${PACKAGE_NAME}: uninstalled managed files for target(s) ${(manifest.targets || []).join(", ")}`);

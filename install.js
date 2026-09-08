@@ -68,19 +68,22 @@ function copySkill(source, target, installedFiles, ownedFiles, conflicts, projec
   ownedFiles.push(relative);
 }
 
-function installSkills(projectRoot, provider, installedFiles, ownedFiles, conflicts, previouslyOwned) {
+function installSkills(projectRoot, provider, installedFiles, ownedFiles, conflicts, previouslyOwned, createdDirs) {
   const source = path.join(__dirname, "skills");
   if (!fs.existsSync(source)) return;
   const targetRoot = path.join(projectRoot, provider.skillsDir);
+  if (!fs.existsSync(targetRoot)) createdDirs.push(provider.skillsDir);
   fs.mkdirSync(targetRoot, { recursive: true });
   for (const skill of fs.readdirSync(source, { withFileTypes: true })) {
     if (!skill.isDirectory()) continue;
     const sourceSkill = path.join(source, skill.name);
+    const skillTarget = path.join(targetRoot, skill.name);
+    if (!fs.existsSync(skillTarget)) createdDirs.push(path.relative(projectRoot, skillTarget));
     for (const entry of fs.readdirSync(sourceSkill, { withFileTypes: true })) {
       if (!entry.isFile()) continue;
       copySkill(
         path.join(sourceSkill, entry.name),
-        path.join(targetRoot, skill.name, entry.name),
+        path.join(skillTarget, entry.name),
         installedFiles,
         ownedFiles,
         conflicts,
@@ -104,7 +107,7 @@ function applyRulesBlock(existing, teamRules, format) {
   return prefix + (existing ? existing.trimEnd() + "\n\n" : "") + block + "\n";
 }
 
-function installRules(projectRoot, provider, installedFiles, ownedFiles, createdPaths, conflicts) {
+function installRules(projectRoot, provider, installedFiles, ownedFiles, createdPaths, conflicts, createdDirs) {
   const rulesSource = path.join(__dirname, "rules", "AGENTS.md");
   if (!fs.existsSync(rulesSource)) return;
   const targetFile = provider.rules.path;
@@ -113,6 +116,10 @@ function installRules(projectRoot, provider, installedFiles, ownedFiles, created
   const existing = existed ? fs.readFileSync(targetPath, "utf8") : "";
   const teamRules = fs.readFileSync(rulesSource, "utf8");
   const rendered = applyRulesBlock(existing, teamRules, provider.rules.format);
+  const rulesParent = path.dirname(targetFile);
+  if (rulesParent !== "." && !fs.existsSync(path.join(projectRoot, rulesParent))) {
+    createdDirs.push(rulesParent);
+  }
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
   fs.writeFileSync(targetPath, rendered);
   installedFiles.push(targetFile);
@@ -178,8 +185,24 @@ function run(options = {}) {
         fs.mkdirSync(path.join(projectRoot, provider.markerDir), { recursive: true });
         createdDirs.push(provider.markerDir);
       }
-      installSkills(projectRoot, provider, installedFiles, ownedFiles, conflicts, previouslyOwned);
-      installRules(projectRoot, provider, installedFiles, ownedFiles, createdPaths, conflicts);
+      installSkills(
+        projectRoot,
+        provider,
+        installedFiles,
+        ownedFiles,
+        conflicts,
+        previouslyOwned,
+        createdDirs,
+      );
+      installRules(
+        projectRoot,
+        provider,
+        installedFiles,
+        ownedFiles,
+        createdPaths,
+        conflicts,
+        createdDirs,
+      );
       providerManifests.push({
         id: provider.id,
         markerDir: provider.markerDir,
