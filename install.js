@@ -2,28 +2,18 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { REGISTRY_VERSION, PROVIDERS, validateProviderIds } = require("./providers");
 
 const PACKAGE_NAME = "@darek-fp/ai-toolkit";
 const PACKAGE_VERSION = require(path.join(__dirname, "package.json")).version;
 const BEGIN = `<!-- BEGIN ${PACKAGE_NAME} -->`;
 const END = `<!-- END ${PACKAGE_NAME} -->`;
 const MANIFEST = ".ai-toolkit-manifest.json";
-// A bare shell snippet here (e.g. `[ -n "$VAR" ] && ... || true`) only runs
-// under bash/sh and breaks on Windows, where npm executes lifecycle scripts
-// via cmd.exe. Using `node -e "..."` keeps this portable across cmd.exe,
-// PowerShell, and POSIX shells alike.
 const PREINSTALL_HELPER =
   'node -e "if(process.env.GH_PKG_TOKEN){require(\'fs\').appendFileSync(\'.npmrc\',\'//npm.pkg.github.com/:_authToken=\'+process.env.GH_PKG_TOKEN+\'\\n\')}"';
 
-// Target-specific install locations, keyed by the value returned from detectTargets().
-const TARGETS = {
-  claude: { markerDir: ".claude", skillsDir: ".claude/skills", rulesFile: "CLAUDE.md" },
-  copilot: { markerDir: ".github", skillsDir: ".github/skills", rulesFile: "AGENTS.md" },
-};
-
 function findProjectRoot() {
   if (process.env.PROJECT_ROOT) return process.env.PROJECT_ROOT;
-
   let dir = __dirname;
   while (dir !== path.dirname(dir)) {
     if (path.basename(dir) === "node_modules") return path.dirname(dir);
@@ -32,107 +22,134 @@ function findProjectRoot() {
   return process.cwd();
 }
 
-function copyDir(source, target, installedFiles, root) {
-  fs.mkdirSync(target, { recursive: true });
-  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
-    const src = path.join(source, entry.name);
-    const dst = path.join(target, entry.name);
-    if (entry.isDirectory()) {
-      copyDir(src, dst, installedFiles, root);
-    } else {
-      fs.copyFileSync(src, dst);
-      installedFiles.push(path.relative(root, dst));
+function normalizeSelection(selection) {
+  if (selection === undefined || selection === null) return undefined;
+  return validateProviderIds(Array.isArray(selection) ? selection : String(selection).split(","));
+}
+
+function detectTargets(projectRoot, explicitSelection) {
+  const explicit = normalizeSelection(explicitSelection);
+  if (explicit) return explicit;
+
+  const targets = Object.values(PROVIDERS)
+    .filter((provider) => fs.existsSync(path.join(projectRoot, provider.markerDir)))
+    .map((provider) => provider.id);
+  return targets.length > 0 ? targets : ["claude", "copilot"];
+}
+
+function readPreviousManifest(projectRoot) {
+  const manifestPath = path.join(projectRoot, MANIFEST);
+  if (!fs.existsSync(manifestPath)) return {};
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    return manifest && typeof manifest === "object" ? manifest : {};
+  } catch {
+    return {};
+  }
+}
+
+function previousOwnedFiles(manifest) {
+  const owned = new Set(manifest.files || []);
+  for (const provider of manifest.providers || []) {
+    for (const file of provider.ownedFiles || []) owned.add(file);
+  }
+  return owned;
+}
+
+function copySkill(source, target, installedFiles, ownedFiles, conflicts, projectRoot, previouslyOwned) {
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  if (fs.existsSync(target) && !previouslyOwned.has(path.relative(projectRoot, target))) {
+    conflicts.push(path.relative(projectRoot, target));
+    return;
+  }
+  fs.copyFileSync(source, target);
+  const relative = path.relative(projectRoot, target);
+  installedFiles.push(relative);
+  ownedFiles.push(relative);
+}
+
+function installSkills(projectRoot, provider, installedFiles, ownedFiles, conflicts, previouslyOwned) {
+  const source = path.join(__dirname, "skills");
+  if (!fs.existsSync(source)) return;
+  const targetRoot = path.join(projectRoot, provider.skillsDir);
+  fs.mkdirSync(targetRoot, { recursive: true });
+  for (const skill of fs.readdirSync(source, { withFileTypes: true })) {
+    if (!skill.isDirectory()) continue;
+    const sourceSkill = path.join(source, skill.name);
+    for (const entry of fs.readdirSync(sourceSkill, { withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      copySkill(
+        path.join(sourceSkill, entry.name),
+        path.join(targetRoot, skill.name, entry.name),
+        installedFiles,
+        ownedFiles,
+        conflicts,
+        projectRoot,
+        previouslyOwned,
+      );
     }
   }
 }
 
-// Detect which AI tool convention(s) exist in the consumer repo. `.claude/`
-// implies Claude Code, `.github/` implies GitHub Copilot. If neither exists,
-// install both so the consumer isn't left with nothing.
-function detectTargets(projectRoot) {
-  const targets = [];
-  if (fs.existsSync(path.join(projectRoot, ".claude"))) targets.push("claude");
-  if (fs.existsSync(path.join(projectRoot, ".github"))) targets.push("copilot");
-  return targets.length > 0 ? targets : ["claude", "copilot"];
-}
-
-function installSkills(projectRoot, target, installedFiles) {
-  const source = path.join(__dirname, "skills");
-  if (!fs.existsSync(source)) return;
-
-  const targetRoot = path.join(projectRoot, TARGETS[target].skillsDir);
-  fs.mkdirSync(targetRoot, { recursive: true });
-
-  for (const skill of fs.readdirSync(source, { withFileTypes: true })) {
-    if (!skill.isDirectory()) continue;
-    const dest = path.join(targetRoot, skill.name);
-    fs.rmSync(dest, { recursive: true, force: true });
-    copyDir(path.join(source, skill.name), dest, installedFiles, projectRoot);
-  }
-}
-
-function applyRulesBlock(existing, teamRules) {
+function applyRulesBlock(existing, teamRules, format) {
   const block = `${BEGIN}\n${teamRules.trim()}\n${END}`;
   const start = existing.indexOf(BEGIN);
   const end = existing.indexOf(END);
-
   if (start !== -1 && end !== -1 && end > start) {
     return existing.slice(0, start) + block + existing.slice(end + END.length);
   }
-
-  return existing.trimEnd() + "\n\n" + block + "\n";
+  const prefix = format === "cursor"
+    ? "---\ndescription: AI Toolkit project rules\nalwaysApply: true\n---\n\n"
+    : "";
+  return prefix + (existing ? existing.trimEnd() + "\n\n" : "") + block + "\n";
 }
 
-function installRules(projectRoot, target, installedFiles, createdRuleFiles) {
+function installRules(projectRoot, provider, installedFiles, ownedFiles, createdPaths, conflicts) {
   const rulesSource = path.join(__dirname, "rules", "AGENTS.md");
   if (!fs.existsSync(rulesSource)) return;
-
-  const targetFile = TARGETS[target].rulesFile;
+  const targetFile = provider.rules.path;
   const targetPath = path.join(projectRoot, targetFile);
-  const fileExisted = fs.existsSync(targetPath);
-  const existing = fileExisted ? fs.readFileSync(targetPath, "utf8") : "";
+  const existed = fs.existsSync(targetPath);
+  const existing = existed ? fs.readFileSync(targetPath, "utf8") : "";
   const teamRules = fs.readFileSync(rulesSource, "utf8");
-  fs.writeFileSync(targetPath, applyRulesBlock(existing, teamRules));
-  if (!installedFiles.includes(targetFile)) installedFiles.push(targetFile);
-  if (!fileExisted && !createdRuleFiles.includes(targetFile)) createdRuleFiles.push(targetFile);
+  const rendered = applyRulesBlock(existing, teamRules, provider.rules.format);
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  fs.writeFileSync(targetPath, rendered);
+  installedFiles.push(targetFile);
+  ownedFiles.push(targetFile);
+  if (!existed) createdPaths.push(targetFile);
+  if (existed && !existing.includes(BEGIN)) conflicts.push(targetFile);
 }
 
-// Only inject the CI-only preinstall auth helper into the *consumer's* own
-// package.json — never into this package's own scripts. See "Preinstall
-// auth-helper injection scope" in the plan for the exact gating rules.
 function maybeInjectPreinstallHelper(projectRoot, manifest) {
   const pkgPath = path.join(projectRoot, "package.json");
-  if (!fs.existsSync(pkgPath)) return;
-  if (!process.env.CI) return;
-
+  if (!fs.existsSync(pkgPath) || !process.env.CI) return;
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
   pkg.scripts = pkg.scripts || {};
   const existingPreinstall = pkg.scripts.preinstall || "";
-  if (existingPreinstall.includes("GH_PKG_TOKEN") || existingPreinstall.includes("_authToken")) {
-    return;
-  }
-
+  if (existingPreinstall.includes("GH_PKG_TOKEN") || existingPreinstall.includes("_authToken")) return;
   pkg.scripts.preinstall = existingPreinstall
     ? `${existingPreinstall} && ${PREINSTALL_HELPER}`
     : PREINSTALL_HELPER;
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-
   manifest.preinstallInjected = true;
   manifest.preinstallHelperLine = PREINSTALL_HELPER;
 }
 
-function writeManifest(projectRoot, targets, installedFiles, createdDirs, createdRuleFiles, extra) {
+function writeManifest(projectRoot, targets, providers, installedFiles, createdDirs, extra) {
   fs.writeFileSync(
     path.join(projectRoot, MANIFEST),
     JSON.stringify(
       {
+        schemaVersion: 2,
+        registryVersion: REGISTRY_VERSION,
         package: PACKAGE_NAME,
         version: PACKAGE_VERSION,
         installedAt: new Date().toISOString(),
         targets,
+        providers,
         files: installedFiles,
         createdDirs,
-        createdRuleFiles,
         preinstallInjected: false,
         ...extra,
       },
@@ -142,39 +159,48 @@ function writeManifest(projectRoot, targets, installedFiles, createdDirs, create
   );
 }
 
-function run() {
+function run(options = {}) {
   try {
     const projectRoot = findProjectRoot();
-    const targets = detectTargets(projectRoot);
+    const targets = detectTargets(projectRoot, options.targets);
+    const previous = readPreviousManifest(projectRoot);
+    const previouslyOwned = previousOwnedFiles(previous);
     const installedFiles = [];
-    const createdRuleFiles = [];
-
-    // Capture, before anything is written, which target marker directories
-    // (.claude/.github) did not already exist — so uninstall can remove
-    // them again if it created them and they end up empty.
-    const createdDirs = targets
-      .map((target) => TARGETS[target].markerDir)
-      .filter((markerDir) => !fs.existsSync(path.join(projectRoot, markerDir)));
+    const createdDirs = [];
+    const providerManifests = [];
 
     for (const target of targets) {
-      installSkills(projectRoot, target, installedFiles);
-      installRules(projectRoot, target, installedFiles, createdRuleFiles);
+      const provider = PROVIDERS[target];
+      const ownedFiles = [];
+      const conflicts = [];
+      const createdPaths = [];
+      if (!fs.existsSync(path.join(projectRoot, provider.markerDir))) {
+        fs.mkdirSync(path.join(projectRoot, provider.markerDir), { recursive: true });
+        createdDirs.push(provider.markerDir);
+      }
+      installSkills(projectRoot, provider, installedFiles, ownedFiles, conflicts, previouslyOwned);
+      installRules(projectRoot, provider, installedFiles, ownedFiles, createdPaths, conflicts);
+      providerManifests.push({
+        id: provider.id,
+        markerDir: provider.markerDir,
+        skillsDir: provider.skillsDir,
+        rulesPath: provider.rules.path,
+        ownedFiles,
+        createdPaths,
+        conflicts,
+      });
     }
 
-    const manifest = {};
-    maybeInjectPreinstallHelper(projectRoot, manifest);
-    writeManifest(projectRoot, targets, installedFiles, createdDirs, createdRuleFiles, manifest);
-
-    console.log(
-      `${PACKAGE_NAME}: installed ${installedFiles.length} file(s) for target(s) ${targets.join(", ")}`,
-    );
+    const extra = {};
+    maybeInjectPreinstallHelper(projectRoot, extra);
+    writeManifest(projectRoot, targets, providerManifests, installedFiles, createdDirs, extra);
+    console.log(`${PACKAGE_NAME}: installed ${installedFiles.length} file(s) for target(s) ${targets.join(", ")}`);
   } catch (error) {
     console.warn(`${PACKAGE_NAME}: postinstall warning: ${error.message}`);
+    if (options.throwOnError) throw error;
   }
 }
 
-module.exports = { run };
+module.exports = { detectTargets, run };
 
-if (require.main === module) {
-  run();
-}
+if (require.main === module) run();
