@@ -344,22 +344,22 @@ uninstall safely.
 
 #### Automated
 
-- [x] 2.1 Package metadata and dry-run packaging checks pass
-- [x] 2.2 Full provider smoke matrix passes with lifecycle isolation
-- [x] 2.3 Existing consumer content is preserved byte-for-byte
+- [x] 2.1 Package metadata and dry-run packaging checks pass — f1d2943
+- [x] 2.2 Full provider smoke matrix passes with lifecycle isolation — f1d2943
+- [x] 2.3 Existing consumer content is preserved byte-for-byte — f1d2943
 
 #### Manual
 
-- [x] 2.4 README setup and no-marker compatibility behavior are confirmed
+- [x] 2.4 README setup and no-marker compatibility behavior are confirmed — f1d2943
 
 ### Phase 3: Compatibility Hardening and Release Readiness
 
 #### Automated
 
-- [x] 3.1 Upgrade, malformed-manifest, and unknown-provider cases pass
-- [x] 3.2 Packed artifact contains all runtime provider assets
-- [x] 3.3 `git diff --check` and release validation pass
+- [x] 3.1 Upgrade, malformed-manifest, and unknown-provider cases pass — f1d2943
+- [x] 3.2 Packed artifact contains all runtime provider assets — f1d2943
+- [x] 3.3 `git diff --check` and release validation pass — f1d2943
 
 #### Manual
 
-- [x] 3.4 Packed-artifact install/reinstall/uninstall cycle is reviewed
+- [x] 3.4 Packed-artifact install/reinstall/uninstall cycle is reviewed — f1d2943
