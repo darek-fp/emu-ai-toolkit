@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const PACKAGE_NAME = "@darek-fp/ai-toolkit";
-const PACKAGE_VERSION = "0.1.0";
+const PACKAGE_VERSION = require(path.join(__dirname, "package.json")).version;
 const BEGIN = `<!-- BEGIN ${PACKAGE_NAME} -->`;
 const END = `<!-- END ${PACKAGE_NAME} -->`;
 const MANIFEST = ".ai-toolkit-manifest.json";
