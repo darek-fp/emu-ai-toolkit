@@ -8,8 +8,12 @@ const PACKAGE_VERSION = "0.1.0";
 const BEGIN = `<!-- BEGIN ${PACKAGE_NAME} -->`;
 const END = `<!-- END ${PACKAGE_NAME} -->`;
 const MANIFEST = ".ai-toolkit-manifest.json";
+// A bare shell snippet here (e.g. `[ -n "$VAR" ] && ... || true`) only runs
+// under bash/sh and breaks on Windows, where npm executes lifecycle scripts
+// via cmd.exe. Using `node -e "..."` keeps this portable across cmd.exe,
+// PowerShell, and POSIX shells alike.
 const PREINSTALL_HELPER =
-  '[ -n "$GH_PKG_TOKEN" ] && echo \'//npm.pkg.github.com/:_authToken=${GH_PKG_TOKEN}\' >> .npmrc || true';
+  'node -e "if(process.env.GH_PKG_TOKEN){require(\'fs\').appendFileSync(\'.npmrc\',\'//npm.pkg.github.com/:_authToken=\'+process.env.GH_PKG_TOKEN+\'\\n\')}"';
 
 // Target-specific install locations, keyed by the value returned from detectTargets().
 const TARGETS = {
